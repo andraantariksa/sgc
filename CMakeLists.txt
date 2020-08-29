@@ -14,3 +14,14 @@ add_library(sgc_lib
 target_include_directories(sgc_lib
         PRIVATE
         include)
+
+# Test
+add_executable(sgc_test
+        test/gc_test.c)
+
+target_link_libraries(sgc_test
+        sgc_lib)
+
+target_include_directories(sgc_lib
+        PUBLIC
+        include)
