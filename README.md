@@ -1,6 +1,6 @@
 # SGC - Simple Garbage Collector
 
-![SGC logo](assets/sgc.png)
+![SGC logo](assets/_sgc_instance.png)
 
 A simple garbage collector
 
