@@ -9,9 +9,9 @@
 #define _SGC_TAG_MARKED (uint8_t)((uint8_t)1 << (uint8_t)1)
 
 // https://primes.utm.edu/lists/small/10000.txt
+#ifndef _SGC_HASHMAP_DEFAULT_MIN_CAPACITY
 #define _SGC_HASHMAP_DEFAULT_MIN_CAPACITY 1031
-
-#define _PTRSIZE sizeof(char*)
+#endif // _SGC_HASHMAP_DEFAULT_MIN_CAPACITY
 
 /// Types
 typedef struct sgc_alloc_t sgc_alloc_t;
@@ -81,6 +81,12 @@ bool sgc_is_prime(size_t n);
 
 size_t sgc_alloc_map_hash(void *alloc_ptr);
 
+void sgc_mark_alloc(sgc_gc_t *gc, void *ptr);
+
+void sgc_mark_stack(sgc_gc_t *gc);
+
+void sgc_alloc_map_remove(sgc_alloc_map_t *alloc_map, void *ptr, bool allow_resize);
+
 // Static
 
 static sgc_alloc_t *sgc_alloc_new(void *ptr, size_t size, void (*destructor)(void *));
@@ -98,17 +104,11 @@ static sgc_alloc_t *sgc_alloc_map_insert(sgc_alloc_map_t *alloc_map,
                                          size_t size,
                                          void (*destructor)(void *));
 
-static void sgc_alloc_map_remove(sgc_alloc_map_t *alloc_map, void *ptr, bool allow_resize);
-
 static void sgc_alloc_map_delete(sgc_alloc_map_t *alloc_map);
 
 static double sgc_alloc_map_load_factor(sgc_alloc_map_t *alloc_map_ptr);
 
 static void sgc_alloc_map_resize(sgc_alloc_map_t *alloc_map, size_t new_capacity);
-
-static void sgc_mark_alloc(void *ptr);
-
-static void sgc_mark_stack();
 
 static void *sgc_primitive_alloc(size_t n, size_t size);
 

@@ -9,6 +9,12 @@
 
 #include "sgc.h"
 
+#if defined(_MSC_VER)
+#define __builtin_frame_address(x)  ((void)(x), _AddressOfReturnAddress())
+#endif
+
+#define _PTRSIZE sizeof(char*)
+
 static sgc_gc_t *sgc_instance;
 
 sgc_gc_t *sgc_get_instance() {
@@ -145,7 +151,7 @@ static sgc_alloc_t *sgc_alloc_map_get(sgc_alloc_map_t *alloc_map, void *ptr) {
   return NULL;
 }
 
-static void sgc_alloc_map_remove(sgc_alloc_map_t *alloc_map, void *ptr, bool allow_resize) {
+void sgc_alloc_map_remove(sgc_alloc_map_t *alloc_map, void *ptr, bool allow_resize) {
   size_t index = sgc_alloc_map_hash(ptr) % alloc_map->capacity;
   sgc_alloc_t *prev_alloc = NULL;
   sgc_alloc_t *current_alloc = alloc_map->allocs[index];
@@ -159,7 +165,6 @@ static void sgc_alloc_map_remove(sgc_alloc_map_t *alloc_map, void *ptr, bool all
       }
       sgc_alloc_delete(current_alloc);
       alloc_map->size--;
-      break;
     } else {
       prev_alloc = current_alloc;
     }
@@ -315,39 +320,40 @@ void *sgc_realloc(void *ptr, size_t size) {
   return realloc_ptr;
 }
 
-static void sgc_mark_alloc(void *ptr) {
+void sgc_mark_alloc(sgc_gc_t *gc, void *ptr) {
   sgc_alloc_t *alloc = sgc_alloc_map_get(sgc_instance->alloc_map, ptr);
-  if (alloc) {
-//    Is does not has a _SGC_TAG_MARKED flag
-    if (!(alloc->tag & _SGC_TAG_MARKED)) {
+  if (alloc && !(alloc->tag & _SGC_TAG_MARKED)) {
 //      Add _SGC_TAG_MARKED flag
-      alloc->tag |= _SGC_TAG_MARKED;
-//    Mark the object referenced by this object
-      for (char *ptr_content = (char *) alloc->ptr; ptr_content <= (char *) alloc->ptr + alloc->size; ++ptr_content) {
-        sgc_mark_alloc(*(void **) ptr);
-      }
+    alloc->tag |= _SGC_TAG_MARKED;
+//    Try to mark the object referenced by this object
+    for (char *ptr_content = (char *) alloc->ptr;
+         ptr_content <= (char *) alloc->ptr + alloc->size - _PTRSIZE;
+         ++ptr_content) {
+      sgc_mark_alloc(gc, *(void **) ptr_content);
     }
   }
 }
 
-static void sgc_mark_stack() {
+void sgc_mark_stack(sgc_gc_t *gc) {
   // TODO
   // GCC only
   void *top_of_stack = __builtin_frame_address(0);
-  void *bottom_of_stack = sgc_instance->bottom_of_stack;
+  void *bottom_of_stack = gc->bottom_of_stack;
   // Add 1 bytes on each iteration
-  for (char *ptr = (char *) top_of_stack; ptr <= (char *) bottom_of_stack - _PTRSIZE; ++ptr) {
-    sgc_mark_alloc(*(void **) ptr);
+  for (char *ptr = (char *) top_of_stack;
+       ptr <= (char *) bottom_of_stack - _PTRSIZE;
+       ++ptr) {
+    sgc_mark_alloc(gc, *(void **) ptr);
   }
 }
 
 void sgc_mark() {
   // Not sure why need to use jmp_buf
-  void (*_sgc_mark_stack)(void) = sgc_mark_stack;
+  void (*_sgc_mark_stack)(sgc_gc_t *) = sgc_mark_stack;
   jmp_buf context;
   memset(&context, 0, sizeof(jmp_buf));
   setjmp(context);
-  _sgc_mark_stack();
+  _sgc_mark_stack(sgc_instance);
 }
 
 size_t sgc_sweep() {
