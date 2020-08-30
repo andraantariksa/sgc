@@ -107,7 +107,7 @@ static bool sgc_alloc_map_resize_to_fit(sgc_alloc_map_t *alloc_map) {
   return false;
 }
 
-static size_t sgc_alloc_map_hash(void *alloc_ptr) {
+size_t sgc_alloc_map_hash(void *alloc_ptr) {
   return ((uintptr_t) alloc_ptr) >> ((size_t) 3);
 }
 
@@ -151,12 +151,10 @@ static void sgc_alloc_map_remove(sgc_alloc_map_t *alloc_map, void *ptr, bool all
   sgc_alloc_t *current_alloc = alloc_map->allocs[index];
   while (current_alloc) {
     if (current_alloc->ptr == ptr) {
-      // If found on the head
+      // Head
       if (!prev_alloc) {
         alloc_map->allocs[index] = current_alloc->next;
-      }
-        // Somewhere in the middle or the end
-      else {
+      } else {
         prev_alloc->next = current_alloc->next;
       }
       sgc_alloc_delete(current_alloc);
@@ -214,13 +212,17 @@ static void sgc_alloc_map_resize(sgc_alloc_map_t *alloc_map, size_t new_capacity
   free(alloc_map->allocs);
   alloc_map->capacity = new_capacity;
   alloc_map->allocs = resized_allocs;
-//    alloc_map->sweep_limit
+  alloc_map->sweep_limit = alloc_map->size + alloc_map->sweep_factor *
+      (double) (alloc_map->capacity - alloc_map->size);
 }
 
 void sgc_delete() {
-  sgc_sweep();
-  sgc_alloc_map_delete(sgc_instance->alloc_map);
-  free(sgc_instance);
+  if (sgc_instance) {
+    sgc_sweep();
+    sgc_alloc_map_delete(sgc_instance->alloc_map);
+    free(sgc_instance);
+    sgc_instance = NULL;
+  }
 }
 
 void sgc_new(void *bottom_of_stack) {
@@ -320,8 +322,7 @@ static void sgc_mark_alloc(void *ptr) {
     if (!(alloc->tag & _SGC_TAG_MARKED)) {
 //      Add _SGC_TAG_MARKED flag
       alloc->tag |= _SGC_TAG_MARKED;
-//          TODO
-//          Not sure
+//    Mark the object referenced by this object
       for (char *ptr_content = (char *) alloc->ptr; ptr_content <= (char *) alloc->ptr + alloc->size; ++ptr_content) {
         sgc_mark_alloc(*(void **) ptr);
       }
@@ -341,8 +342,7 @@ static void sgc_mark_stack() {
 }
 
 void sgc_mark() {
-//    sgc_mark_roots();
-  // Not sure why
+  // Not sure why need to use jmp_buf
   void (*_sgc_mark_stack)(void) = sgc_mark_stack;
   jmp_buf context;
   memset(&context, 0, sizeof(jmp_buf));

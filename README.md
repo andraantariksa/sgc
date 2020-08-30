@@ -2,7 +2,7 @@
 
 ![SGC logo](assets/sgc.png)
 
-A simple garbage collector
+A simple garbage collector implemented using Mark-and-Sweep algorithm.
 
 ## Reference
 

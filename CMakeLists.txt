@@ -16,12 +16,18 @@ target_include_directories(sgc_lib
         include)
 
 # Test
+add_library(munit
+        STATIC
+        lib/munit/munit.c)
+
 add_executable(sgc_test
         test/gc_test.c)
 
 target_link_libraries(sgc_test
-        sgc_lib)
+        sgc_lib
+        munit)
 
 target_include_directories(sgc_lib
         PUBLIC
-        include)
+        include
+        lib/munit)
