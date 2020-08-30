@@ -8,6 +8,7 @@ A simple garbage collector
 
 - https://github.com/mkirchner/gc
 - https://github.com/orangeduck/tgc
+- https://caml.inria.fr/pub/docs/oreilly-book/pdf/chap9.pdf
 
 ## License
 
